@@ -1,1 +1,10 @@
-{"username": "ihc", "auth": true, "servers": ["ss://RC4-MD5:password@ip:port", "ss://RC4-MD5:password2@ip2:port2"], "password": "iah", "port": 8890, "listen": "127.0.0.1", "recovertime": 600, "maxfail": 3}
+{
+  "listen": "0.0.0.0",
+  "port": 23333,
+  "auth": true,
+  "username": "ihc",
+  "password": "iah",
+  "servers": ["ss://RC4-MD5:pass1@ip1:port1", "ss://RC4-MD5:pass2@ip2:port2"],
+  "maxfail": 3,
+  "recovertime": 600
+}

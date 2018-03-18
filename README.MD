@@ -15,7 +15,7 @@ There is a python version of this app: [shadowsocks-with-socks-auth](https://git
 
 ####Install:
 
-Way 1: Download binary from [Releases](https://github.com/ihciah/inner-shadowsocks/releases).
+Way 1: Download binary from [Releases](https://github.com/ihciah/inner-shadowsocks/releases). Golang environment is not required.
 
 Way 2:
 
@@ -23,7 +23,7 @@ Way 2:
 go get -u -v github.com/ihciah/inner-shadowsocks/inner-ss
 ```
 
-Due to network, in most situation, `go get` cannot be executed correctly.
+Due to network issue in China mainland, in most situation, `go get` cannot be executed correctly.
 
 ####Usage:
 
@@ -76,7 +76,7 @@ You can use `systemd` or `supervisor` to run the daemon.
 
 ####安装：
 
-方式1：在 [Releases](https://github.com/ihciah/inner-shadowsocks/releases) 中下载可执行文件并上传直接执行。
+方式1(推荐)：在 [Releases](https://github.com/ihciah/inner-shadowsocks/releases) 中下载可执行文件并上传直接执行。不需要安装Go语言环境。
 
 方式2：
 
@@ -115,3 +115,21 @@ inner-ss -c config.json
 `servers`为shadowsocks服务器配置信息，请按照排好的顺序提供。如果一个服务器无法连接，当出错次数超过`maxfail`后会被标记为不可用，该标记会在`recovertime`秒后解除。
 
 可以使用 `systemd` 或 `supervisor` 守护进程执行。
+
+-----
+
+Supervisor Configure File Example:
+
+`/etc/supervisor/conf.d/ss4tg.conf`
+
+```
+[program:ss4tg]
+directory = /opt/ss4tg
+command = /opt/ss4tg/inner-ss
+autostart = true
+autorestart = true
+startsecs = 5
+startretries = 30
+user = nobody
+```
+Then run `sudo supervisorctl reload`.
