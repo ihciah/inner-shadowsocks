@@ -59,7 +59,7 @@ func (config *Config) StartServer() {
 	listener, err := net.ListenTCP("tcp", &config.listenAddr)
 	defer listener.Close()
 	if err != nil{
-		panic("Cannot listen")
+		panic("Cannot listen on given ip and port!")
 	}
 	for{
 		conn, err := listener.AcceptTCP()
@@ -273,7 +273,7 @@ func main(){
 	var verbose bool
 	flag.BoolVar(&verbose, "v", false, "verbose mode")
 	flag.StringVar(&config_file, "c","config.json", "config file path")
-
+	flag.Parse()
 
 	c, err := LoadUserConfig(config_file, verbose)
 	if err != nil{
