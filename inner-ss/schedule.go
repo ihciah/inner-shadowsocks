@@ -1,36 +1,36 @@
 package main
 
 import (
+	"log"
 	"sync"
 	"time"
-	"log"
 )
 
-type Scheduler struct{
-	max_fail int
-	status []bool
+type Scheduler struct {
+	max_fail   int
+	status     []bool
 	fail_count []int
-	succ_chan chan int
-	fail_chan chan int
-	lock sync.Mutex
-	verbose bool
+	succ_chan  chan int
+	fail_chan  chan int
+	lock       sync.Mutex
+	verbose    bool
 }
 
-func (s *Scheduler)log(f string, v ...interface{}) {
+func (s *Scheduler) log(f string, v ...interface{}) {
 	if s.verbose {
 		log.Printf(f, v...)
 	}
 }
 
-func (s *Scheduler) get() int{
-	for i, v := range(s.status){
-		if v{
+func (s *Scheduler) get() int {
+	for i, v := range s.status {
+		if v {
 			s.log("[Schedule] Get server %d.", i)
 			return i
 		}
 	}
 	s.lock.Lock()
-	for i := range(s.status){
+	for i := range s.status {
 		s.status[i] = true
 		s.fail_count[i] = 0
 	}
@@ -39,21 +39,21 @@ func (s *Scheduler) get() int{
 	return 0
 }
 
-func (s *Scheduler) report_success(id int){
+func (s *Scheduler) report_success(id int) {
 	s.log("[Schedule] %d success.", id)
 	s.succ_chan <- id
 }
 
-func (s *Scheduler) report_fail(id int){
+func (s *Scheduler) report_fail(id int) {
 	s.log("[Schedule] %d fail.", id)
 	s.fail_chan <- id
 }
 
-func (s *Scheduler) init(n, max_fail, chan_buf, recover_time int, verbose bool){
+func (s *Scheduler) init(n, max_fail, chan_buf, recover_time int, verbose bool) {
 	s.verbose = verbose
 	s.max_fail = max_fail
 	s.status = make([]bool, n)
-	for i := range(s.status){
+	for i := range s.status {
 		s.status[i] = true
 	}
 	s.fail_count = make([]int, n)
@@ -62,7 +62,7 @@ func (s *Scheduler) init(n, max_fail, chan_buf, recover_time int, verbose bool){
 	s.log("[Schedule] Init. Maxfail=%d, Recover_time=%d sec, channel_buffer_size=%d.", max_fail, recover_time, chan_buf)
 }
 
-func (s *Scheduler) process(recover_time int){
+func (s *Scheduler) process(recover_time int) {
 	for {
 		select {
 		case succ := <-s.succ_chan:
@@ -72,7 +72,7 @@ func (s *Scheduler) process(recover_time int){
 			s.lock.Unlock()
 		case fail := <-s.fail_chan:
 			s.lock.Lock()
-			if s.status[fail] == true{
+			if s.status[fail] == true {
 				if s.fail_count[fail] >= s.max_fail {
 					s.fail_count[fail] = 0
 					s.status[fail] = false
@@ -83,9 +83,9 @@ func (s *Scheduler) process(recover_time int){
 						s.fail_count[fail] = 0
 						locker.Unlock()
 						s.log("[Schedule] Server %d up due to time exceed.", fail)
-					}(&s.lock, time.NewTimer(time.Second * time.Duration(recover_time)))
+					}(&s.lock, time.NewTimer(time.Second*time.Duration(recover_time)))
 					s.log("[Schedule] Server %d down.", fail)
-				} else{
+				} else {
 					s.fail_count[fail]++
 					s.log("[Schedule] %d fail count: %d.", fail, s.fail_count[fail])
 				}
@@ -94,16 +94,3 @@ func (s *Scheduler) process(recover_time int){
 		}
 	}
 }
-//
-//func main(){
-//	var S Scheduler
-//	var x int
-//	S.init(5, 3, 100)
-//
-//	for i:=0;i<60;i++{
-//		x = S.get()
-//		fmt.Println(x)
-//		S.report_fail(x)
-//		time.Sleep(time.Second)
-//	}
-//}
