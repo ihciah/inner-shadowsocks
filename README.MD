@@ -49,9 +49,9 @@ A json string like
   "password": "iah",
   "servers": ["ss://RC4-MD5:pass1@ip1:port1", "ss://RC4-MD5:pass2@ip2:port2"],
   "maxfail": 3,
-  "recovertime": 600,
-  "remotetimeout": 6,
-  "insidetimeout": 3
+  "remotetimeout": 60,
+  "insidetimeout": 60,
+  "starttimeout": 6
 }
 ```
 
@@ -113,8 +113,9 @@ inner-ss -c config.json
   "servers": ["ss://RC4-MD5:pass1@ip1:port1", "ss://RC4-MD5:pass2@ip2:port2"],
   "maxfail": 3,
   "recovertime": 600,
-  "remotetimeout": 6,
-  "insidetimeout": 3
+  "remotetimeout": 60,
+  "insidetimeout": 60,
+  "starttimeout": 6
 }
 ```
 
