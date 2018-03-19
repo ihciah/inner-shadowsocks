@@ -20,6 +20,8 @@ const (
 	default_Maxfail = 10
 	default_Recovertime = 600
 	default_Listen = "0.0.0.0"
+	default_remote_timeout = 6
+	default_inside_timeout = 3
 )
 
 type Server struct{
@@ -36,6 +38,8 @@ type Config struct {
 	password []byte
 	scheduler Scheduler
 	verbose bool
+	rtimeout time.Duration
+	itimeout time.Duration
 }
 
 type userConfig struct{
@@ -47,6 +51,13 @@ type userConfig struct{
 	Servers []string `json:"servers"`
 	Maxfail int `json:"maxfail"`
 	Recovertime int `json:"recovertime"`
+	Remotetimeout int `json:"remotetimeout"`
+	Insidetimeout int `json:"insidetimeout"`
+}
+
+type timeoutConn struct{
+	net.Conn
+	timelimit time.Duration
 }
 
 func (config *Config)log(f string, v ...interface{}) {
@@ -55,19 +66,31 @@ func (config *Config)log(f string, v ...interface{}) {
 	}
 }
 
+func (tc timeoutConn) Read(buf []byte) (int, error){
+	tc.Conn.SetReadDeadline(time.Now().Add(tc.timelimit))
+	return tc.Conn.Read(buf)
+}
+
+func (tc timeoutConn) Write(buf []byte) (int, error){
+	tc.Conn.SetWriteDeadline(time.Now().Add(tc.timelimit))
+	return tc.Conn.Write(buf)
+}
+
 func (config *Config) StartServer() {
 	listener, err := net.ListenTCP("tcp", &config.listenAddr)
 	defer listener.Close()
 	if err != nil{
-		panic("Cannot listen on given ip and port!")
+		panic("[inner-ss] Cannot listen on given ip and port!")
 	}
+	config.log("[inner-ss] Auth: %t, RemoteTimeout: %d sec, InsideTimeout: %d sec.", config.auth, config.rtimeout/time.Nanosecond, config.itimeout/time.Nanosecond)
+	config.log("[inner-ss] Listening %s on port %d.", config.listenAddr.IP, config.listenAddr.Port)
 	for{
 		conn, err := listener.AcceptTCP()
 		if err != nil{
-			config.log("Failed to accept %s", err)
+			config.log("[inner-ss] Failed to accept %s", err)
 			continue
 		}
-		config.log("Accept connection from %s", conn.RemoteAddr())
+		config.log("[inner-ss] Accept connection from %s", conn.RemoteAddr())
 		go config.handleConnection(conn)
 	}
 }
@@ -85,19 +108,19 @@ func (config *Config) handleConnection(conn *net.TCPConn) error {
 	defer conn.Close()
 	conn.SetKeepAlive(true)
 	if err := config.handleSocksEncrypt(conn); err != nil{
-		config.log("Error when validating user. %s", err)
+		config.log("[inner-ss] Error when validating user. %s", err)
 		return err
 	}
 	addr, err := getAddr(conn)
 	if err != nil{
-		config.log("Error when getAddr. %s", err)
+		config.log("[inner-ss] Error when getAddr. %s", err)
 		return err
 	}
 	server_id := config.scheduler.get()
 	server, ciph := config.servers[server_id].addr, config.servers[server_id].ciph
 	rc, err := net.Dial("tcp", server)
 	if err != nil {
-		config.log("Cannot connect to shadowsocks server %s\n", server)
+		config.log("[inner-ss] Cannot connect to shadowsocks server %s\n", server)
 		config.scheduler.report_fail(server_id)
 		return err
 	}
@@ -105,16 +128,15 @@ func (config *Config) handleConnection(conn *net.TCPConn) error {
 	defer rc.Close()
 	rc.(*net.TCPConn).SetKeepAlive(true)
 	rc = ciph.StreamConn(rc)
-	if _, err = rc.Write(addr); err != nil{
+	if _, err := rc.Write(addr); err != nil{
 		return err
 	}
-	if _, _, err = relay(rc, conn); err != nil{
-		if err, ok := err.(net.Error); ok && err.Timeout() {
-			return nil
-		}
-		return err
+	_, _, rerr, err := relay(rc, conn, config.rtimeout, config.itimeout)
+	if rerr != nil{
+		config.log("[inner-ss] Remote connection error. %s", rerr)
+		return rerr
 	}
-	return nil
+	return err
 }
 
 func (config *Config) handleSocksEncrypt(conn *net.TCPConn) error{
@@ -189,7 +211,9 @@ func getAddr(conn *net.TCPConn) ([]byte, error){
 	return dstAddr, nil
 }
 
-func relay(left, right net.Conn) (int64, int64, error) {
+func relay(left, right net.Conn, rtimeout, itimeout time.Duration) (int64, int64, error, error) {
+	tleft := timeoutConn{left, rtimeout}
+	tright := timeoutConn{right, itimeout}
 	type res struct {
 		N   int64
 		Err error
@@ -197,21 +221,12 @@ func relay(left, right net.Conn) (int64, int64, error) {
 	ch := make(chan res)
 
 	go func() {
-		n, err := io.Copy(right, left)
-		right.SetDeadline(time.Now()) // wake up the other goroutine blocking on right
-		left.SetDeadline(time.Now())  // wake up the other goroutine blocking on left
+		n, err := io.Copy(tright, tleft)
 		ch <- res{n, err}
 	}()
-
-	n, err := io.Copy(left, right)
-	right.SetDeadline(time.Now()) // wake up the other goroutine blocking on right
-	left.SetDeadline(time.Now())  // wake up the other goroutine blocking on left
+	n, err := io.Copy(tleft, tright)
 	rs := <-ch
-
-	if err == nil {
-		err = rs.Err
-	}
-	return n, rs.N, err
+	return n, rs.N, err, rs.Err
 }
 
 func parseURL(s string) (addr, cipher, password string, err error) {
@@ -229,7 +244,8 @@ func parseURL(s string) (addr, cipher, password string, err error) {
 }
 
 func LoadUserConfig(config_file string, verbose bool) (Config, error){
-	user_config := userConfig{Maxfail:default_Maxfail, Recovertime:default_Recovertime, Listen: default_Listen}
+	user_config := userConfig{Maxfail:default_Maxfail, Recovertime:default_Recovertime, Listen: default_Listen,
+	Remotetimeout:default_remote_timeout, Insidetimeout:default_inside_timeout}
 	config := Config{verbose: verbose}
 	data, err := ioutil.ReadFile(config_file)
 	if err != nil{
@@ -253,6 +269,8 @@ func LoadUserConfig(config_file string, verbose bool) (Config, error){
 	}
 	config.scheduler = Scheduler{}
 	config.scheduler.init(len(config.servers), user_config.Maxfail, channel_buffer_size, user_config.Recovertime, verbose)
+	config.rtimeout = time.Duration(user_config.Remotetimeout) * time.Second
+	config.itimeout = time.Duration(user_config.Insidetimeout) * time.Second
 	return config, nil
 }
 

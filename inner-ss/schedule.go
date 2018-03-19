@@ -59,7 +59,7 @@ func (s *Scheduler) init(n, max_fail, chan_buf, recover_time int, verbose bool){
 	s.fail_count = make([]int, n)
 	s.succ_chan, s.fail_chan = make(chan int, chan_buf), make(chan int, chan_buf)
 	go s.process(recover_time)
-	s.log("[Schedule] Init. Maxfail=%d, Recover_time=%d sec, channel_buffer_size=%d", max_fail, recover_time, chan_buf)
+	s.log("[Schedule] Init. Maxfail=%d, Recover_time=%d sec, channel_buffer_size=%d.", max_fail, recover_time, chan_buf)
 }
 
 func (s *Scheduler) process(recover_time int){

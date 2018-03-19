@@ -6,5 +6,7 @@
   "password": "iah",
   "servers": ["ss://RC4-MD5:pass1@ip1:port1", "ss://RC4-MD5:pass2@ip2:port2"],
   "maxfail": 3,
-  "recovertime": 600
+  "recovertime": 600,
+  "remotetimeout": 6,
+  "insidetimeout": 3
 }
