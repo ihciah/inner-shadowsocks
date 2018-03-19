@@ -67,12 +67,12 @@ func (config *Config)log(f string, v ...interface{}) {
 }
 
 func (tc timeoutConn) Read(buf []byte) (int, error){
-	tc.Conn.SetReadDeadline(time.Now().Add(tc.timelimit))
+	tc.Conn.SetDeadline(time.Now().Add(tc.timelimit))
 	return tc.Conn.Read(buf)
 }
 
 func (tc timeoutConn) Write(buf []byte) (int, error){
-	tc.Conn.SetWriteDeadline(time.Now().Add(tc.timelimit))
+	tc.Conn.SetDeadline(time.Now().Add(tc.timelimit))
 	return tc.Conn.Write(buf)
 }
 
