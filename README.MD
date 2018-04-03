@@ -44,18 +44,26 @@ A json string like
 {
   "listen": "0.0.0.0",
   "port": 23333,
-  "auth": true,
+  "auth": false,
   "username": "ihc",
   "password": "iah",
   "servers": ["ss://RC4-MD5:pass1@ip1:port1", "ss://RC4-MD5:pass2@ip2:port2"],
   "maxfail": 3,
+  "recovertime": 600,
+  "starttimeout": 5,
   "remotetimeout": 60,
   "insidetimeout": 60,
-  "starttimeout": 6
+  "whitelistenable": false,
+  "whitelistdomains": [".github.com"],
+  "whitelistips": ["::/0", "0.0.0.0/0"]
 }
 ```
 
 The `auth`, `username`, `password`, `maxfail`, `recovertime`, `remotetimeout`, `insidetimeout`, `starttimeout` are optional whose default value are `false`, `""`, `""`, `10`, `600`, `60`, `60`, `8` .
+
+Also, `whitelistenable` is `false` by default. If you want to limit proxy only to some range, you can use `whitelistdomains` and `whitelistips` .
+
+IP should follow CIDR format such as `100.110.120.130/32`. `::/0` means all IPv6, `0.0.0.0/0` means all IPv4. Domains will be matched by the suffix. Any domains has suffix matched in `whitelistdomains` can pass. For example, `www.github.com` will match `.github.com`.
 
 If you set `auth` to `true`, you should provide `username` and `password`. 
 
@@ -107,19 +115,26 @@ inner-ss -c config.json
 {
   "listen": "0.0.0.0",
   "port": 23333,
-  "auth": true,
+  "auth": false,
   "username": "ihc",
   "password": "iah",
   "servers": ["ss://RC4-MD5:pass1@ip1:port1", "ss://RC4-MD5:pass2@ip2:port2"],
   "maxfail": 3,
   "recovertime": 600,
+  "starttimeout": 5,
   "remotetimeout": 60,
   "insidetimeout": 60,
-  "starttimeout": 6
+  "whitelistenable": false,
+  "whitelistdomains": [".github.com"],
+  "whitelistips": ["::/0", "0.0.0.0/0"]
 }
 ```
 
 `auth`, `username`, `password` , `maxfail`, `recovertime`, `remotetimeout`, `insidetimeout`, `starttimeout` 这些字段是可选的，默认值为 `false`, `""`, `""`, `10`, `600`, `60`, `60`, `8`. `auth`为`true`表示开启SOCKS5认证功能，可以防止服务器被扫描器扫到并滥用，当开启认证功能时，需提供 `username` 和 `password`。
+
+`whitelistenable` 默认关闭。如果需要限制访问特定服务器，你可以开启该功能，并填写 `whitelistdomains` 和 `whitelistips` 。
+
+其中 IP 段填写格式为 CIDR 记法，如 `100.110.120.130/32`， `::/0` 表示所有 IPv6 段， `0.0.0.0/0` 表示所有 IPv4段。域名为后缀匹配，若后缀符合 `whitelistdomains` 中任意条目则可以通过，如 `www.github.com` 会匹配 `.github.com`。
 
 `servers`为 shadowsocks 服务器配置信息，请按照排好的顺序提供。如果一个服务器无法连接，当出错次数超过`maxfail`后会被标记为不可用，该标记会在`recovertime`秒后解除。请注意 shadowsocks 的服务器加密方式和密码必须保证正确。我们无法判断服务器不回应是因为用户的恶意请求还是密码错误，所以为了避免负载均衡功能被用来恶意禁用服务器，我们只采用能否连接服务器作为判断依据。
 
