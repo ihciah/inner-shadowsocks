@@ -1,7 +1,7 @@
 {
   "listen": "0.0.0.0",
   "port": 23333,
-  "auth": true,
+  "auth": false,
   "username": "ihc",
   "password": "iah",
   "servers": ["ss://RC4-MD5:pass1@ip1:port1", "ss://RC4-MD5:pass2@ip2:port2"],
@@ -9,5 +9,8 @@
   "recovertime": 600,
   "starttimeout": 5,
   "remotetimeout": 60,
-  "insidetimeout": 60
+  "insidetimeout": 60,
+  "whitelistenable": false,
+  "whitelistdomains": [],
+  "whitelistips": ["::/0", "0.0.0.0/0"]
 }

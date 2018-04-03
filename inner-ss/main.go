@@ -42,20 +42,24 @@ type Config struct {
 	rtimeout   time.Duration
 	itimeout   time.Duration
 	stimeout   time.Duration
+	whitelist  Whitelist
 }
 
 type userConfig struct {
-	Listen        string   `json:"listen"`
-	Port          int      `json:"port"`
-	Auth          bool     `json:"auth"`
-	Username      string   `json:"username"`
-	Password      string   `json:"password"`
-	Servers       []string `json:"servers"`
-	Maxfail       int      `json:"maxfail"`
-	Recovertime   int      `json:"recovertime"`
-	Starttimeout  int      `json:"starttimeout"`
-	Remotetimeout int      `json:"remotetimeout"`
-	Insidetimeout int      `json:"insidetimeout"`
+	Listen           string   `json:"listen"`
+	Port             int      `json:"port"`
+	Auth             bool     `json:"auth"`
+	Username         string   `json:"username"`
+	Password         string   `json:"password"`
+	Servers          []string `json:"servers"`
+	Maxfail          int      `json:"maxfail"`
+	Recovertime      int      `json:"recovertime"`
+	Starttimeout     int      `json:"starttimeout"`
+	Remotetimeout    int      `json:"remotetimeout"`
+	Insidetimeout    int      `json:"insidetimeout"`
+	Whitelistenable  bool     `json:"whitelistenable"`
+	Whitelistdomains []string `json:"whitelistdomains"`
+	Whitelistips     []string `json:"whitelistips"`
 }
 
 type timeoutConn struct {
@@ -63,6 +67,37 @@ type timeoutConn struct {
 	timelimit time.Duration
 	starttime time.Duration
 	active    bool
+}
+
+func (uc *userConfig) loadServers() []Server {
+	servers := make([]Server, 0, len(uc.Servers))
+	for _, st := range uc.Servers {
+		s, err := makeServer(st)
+		if err != nil {
+			continue
+		}
+		servers = append(servers, s)
+	}
+	return servers
+}
+
+func (uc *userConfig) loadWhitelist() (w Whitelist) {
+	domains := make([]string, 0, len(uc.Whitelistdomains))
+	ips := make([]net.IPNet, 0, len(uc.Whitelistips))
+	if !uc.Whitelistenable {
+		return
+	}
+	for _, domain := range uc.Whitelistdomains {
+		domains = append(domains, domain)
+	}
+	for _, ip := range uc.Whitelistips {
+		_, ipnet, err := net.ParseCIDR(ip)
+		if err != nil {
+			continue
+		}
+		ips = append(ips, *ipnet)
+	}
+	return Whitelist{enable: uc.Whitelistenable, domainlist: domains, iplist: ips}
 }
 
 func (config *Config) log(f string, v ...interface{}) {
@@ -95,7 +130,8 @@ func (config *Config) StartServer() {
 	if err != nil {
 		panic("[inner-ss] Cannot listen on given ip and port!")
 	}
-	config.log("[inner-ss] Auth: %t, RemoteTimeout: %d sec, InsideTimeout: %d sec.", config.auth, config.rtimeout/time.Nanosecond, config.itimeout/time.Nanosecond)
+	config.log("[inner-ss] Auth: %t, WhiteList: %t, RemoteTimeout: %d sec, InsideTimeout: %d sec.",
+		config.auth, config.whitelist.enable, config.rtimeout/time.Second, config.itimeout/time.Second)
 	config.log("[inner-ss] Listening %s on port %d.", config.listenAddr.IP, config.listenAddr.Port)
 	for {
 		conn, err := listener.AcceptTCP()
@@ -127,6 +163,10 @@ func (config *Config) handleConnection(conn *net.TCPConn) error {
 	addr, err := getAddr(conn)
 	if err != nil {
 		config.log("[inner-ss] Error when getAddr. %s", err)
+		return err
+	}
+	if err := config.whitelist.check(addr); err != nil {
+		config.log("[inner-ss] Error when checking ip or domain. %s", err)
 		return err
 	}
 	server_id := config.scheduler.get()
@@ -163,7 +203,7 @@ func (config *Config) handleSocksEncrypt(conn *net.TCPConn) error {
 	if config.auth {
 		auth = 0x02
 	}
-	if buf[0] == 0x05 && !bytein(methods, auth) {
+	if buf[0] != 0x05 || !bytein(methods, auth) {
 		return errors.New("Not Socks5 or auth type incorrect.")
 	}
 	conn.Write([]byte{0x05, auth})
@@ -190,8 +230,11 @@ func (config *Config) handleSocksEncrypt(conn *net.TCPConn) error {
 func getAddr(conn *net.TCPConn) ([]byte, error) {
 	buf := make([]byte, 259)
 	n, err := conn.Read(buf)
-	if err != nil || n < 7 {
+	if err != nil {
 		return nil, err
+	}
+	if n < 7 {
+		return nil, errors.New("Invalid packet.")
 	}
 	var dstAddr []byte
 	switch buf[3] {
@@ -258,7 +301,8 @@ func parseURL(s string) (addr, cipher, password string, err error) {
 
 func LoadUserConfig(config_file string, verbose bool) (Config, error) {
 	user_config := userConfig{Maxfail: default_Maxfail, Recovertime: default_Recovertime, Listen: default_Listen,
-		Remotetimeout: default_remote_timeout, Insidetimeout: default_inside_timeout, Starttimeout: default_start_timeout}
+		Remotetimeout: default_remote_timeout, Insidetimeout: default_inside_timeout, Starttimeout: default_start_timeout,
+		Whitelistenable: false}
 	config := Config{verbose: verbose}
 	data, err := ioutil.ReadFile(config_file)
 	if err != nil {
@@ -272,14 +316,9 @@ func LoadUserConfig(config_file string, verbose bool) (Config, error) {
 	}
 	config.listenAddr = net.TCPAddr{IP: net.ParseIP(user_config.Listen), Port: user_config.Port}
 	config.auth, config.username, config.password = user_config.Auth, []byte(user_config.Username), []byte(user_config.Password)
-	config.servers = make([]Server, 0, len(config.servers))
-	for _, st := range user_config.Servers {
-		s, err := makeServer(st)
-		if err != nil {
-			continue
-		}
-		config.servers = append(config.servers, s)
-	}
+	config.servers = user_config.loadServers()
+	config.whitelist = user_config.loadWhitelist()
+	config.whitelist.logger = config.log
 	config.scheduler = Scheduler{}
 	config.scheduler.init(len(config.servers), user_config.Maxfail, channel_buffer_size, user_config.Recovertime, verbose)
 	config.rtimeout = time.Duration(user_config.Remotetimeout) * time.Second
@@ -303,7 +342,7 @@ func makeServer(s string) (Server, error) {
 func main() {
 	var config_file string
 	var verbose bool
-	flag.BoolVar(&verbose, "v", false, "verbose mode")
+	flag.BoolVar(&verbose, "v", true, "verbose mode")
 	flag.StringVar(&config_file, "c", "config.json", "config file path")
 	flag.Parse()
 
