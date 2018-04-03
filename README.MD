@@ -55,7 +55,7 @@ A json string like
 }
 ```
 
-The `auth`, `username`,`password` ,`maxfail`, `recovertime`, `remotetimeout`, `insidetimeout`, `starttimeout` are optional whose default value are `false`, `""`, `""`, `10`, `600`, `60`, `60`, `8` .
+The `auth`, `username`, `password`, `maxfail`, `recovertime`, `remotetimeout`, `insidetimeout`, `starttimeout` are optional whose default value are `false`, `""`, `""`, `10`, `600`, `60`, `60`, `8` .
 
 If you set `auth` to `true`, you should provide `username` and `password`. 
 
@@ -71,9 +71,9 @@ You can use `systemd` or `supervisor` to run the daemon. The example configure o
 
 ### 中文
 
-这是一个类似`ss-local`的小程序，使用Golang编写。你可以在一台中国大陆的服务器上运行它，它可以使用`shadowsocks` 协议与境外服务器通信，并打开一个`SOCKS5` 代理提供给国内用户。此应用可以免掉运行`shadowsocks`客户端的麻烦，你可以直接在Chrome或者Telegram等应用内设置`SOCKS5`代理越过封锁。
+这是一个类似 `ss-local` 的小程序，使用Golang编写。你可以在一台中国大陆的服务器上运行它，它可以使用 `shadowsocks`  协议与境外服务器通信，并打开一个 `SOCKS5`  代理提供给国内用户。此应用可以免掉运行 `shadowsocks` 客户端的麻烦，你可以直接在Chrome或者Telegram等应用内设置 `SOCKS5` 代理越过封锁。
 
-[shadowsocks-with-socks-auth](https://github.com/ihciah/shadowsocks-with-socks-auth) 是一个python版`shadowsocks`的修改版，添加了`SOCKS5`用户认证功能。本应用比这个运行更高效，并且添加了保证高可用性的负载均衡功能。
+[shadowsocks-with-socks-auth](https://github.com/ihciah/shadowsocks-with-socks-auth) 是一个python版 `shadowsocks` 的修改版，添加了 `SOCKS5` 用户认证功能。本应用比这个运行更高效，并且添加了保证高可用性的负载均衡功能。
 
 #### 功能：
 
@@ -90,7 +90,7 @@ You can use `systemd` or `supervisor` to run the daemon. The example configure o
 go get -u -v github.com/ihciah/inner-shadowsocks/inner-ss
 ```
 
-在国内服务器上执行安装，由于网络原因`go get`大概率无法顺利执行。
+在国内服务器上执行安装，由于网络原因 `go get` 大概率无法顺利执行。
 
 #### 使用：
 
@@ -119,13 +119,13 @@ inner-ss -c config.json
 }
 ```
 
-`auth`, `username`,`password` ,`maxfail`, `recovertime`, `remotetimeout`, `insidetimeout`, `starttimeout` 这些字段是可选的，默认值为 `false`, `""`, `""`, `10`, `600`, `60`, `60`, `8`. `auth`为`true`表示开启SOCKS5认证功能，可以防止服务器被扫描器扫到并滥用，当开启认证功能时，需提供`username`和`password`。
+`auth`, `username`, `password` , `maxfail`, `recovertime`, `remotetimeout`, `insidetimeout`, `starttimeout` 这些字段是可选的，默认值为 `false`, `""`, `""`, `10`, `600`, `60`, `60`, `8`. `auth`为`true`表示开启SOCKS5认证功能，可以防止服务器被扫描器扫到并滥用，当开启认证功能时，需提供 `username` 和 `password`。
 
 `servers`为 shadowsocks 服务器配置信息，请按照排好的顺序提供。如果一个服务器无法连接，当出错次数超过`maxfail`后会被标记为不可用，该标记会在`recovertime`秒后解除。请注意 shadowsocks 的服务器加密方式和密码必须保证正确。我们无法判断服务器不回应是因为用户的恶意请求还是密码错误，所以为了避免负载均衡功能被用来恶意禁用服务器，我们只采用能否连接服务器作为判断依据。
 
-`remotetimeout` 为代理服务器超时时间，`insidetimeout` 为客户端超时时间，`starttimeout` 为客户端和服务端第一次通信超时时间。`starttimeout` 可以设置为较短时间以减少错误请求的等待时间，`remotetimeout`和`insidetimeout` 设置较长时间可以允许较长连接，如减少Telegram的重连次数。
+`remotetimeout` 为代理服务器超时时间，`insidetimeout` 为客户端超时时间，`starttimeout` 为客户端和服务端第一次通信超时时间。`starttimeout` 可以设置为较短时间以减少错误请求的等待时间，`remotetimeout`和`insidetimeout`  设置较长时间可以允许较长连接，如减少Telegram的重连次数。
 
-可以使用 `systemd` 或 `supervisor` 守护进程执行。文末附supervisor的配置文件样例。
+可以使用 `systemd` 或 `supervisor` 守护进程执行。文末附 supervisor 的配置文件样例。
 
 -----
 
@@ -143,4 +143,4 @@ startsecs = 5
 startretries = 30
 user = nobody
 ```
-Then run `sudo supervisorctl reload`.
+Then run `sudo supervisorctl reload`. You can add `minfds=50000` in `[supervisord]` section of `/etc/supervisor/supervisord.conf` to increase the system limit of file descriptor.
