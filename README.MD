@@ -1,5 +1,7 @@
 # inner-shadowsocks #
 
+![img](https://i.v2ex.co/5iP665B4.png)
+
 [English](#english) | [中文](#中文)
 
 ### English

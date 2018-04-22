@@ -7,10 +7,10 @@
   "servers": ["ss://RC4-MD5:pass1@ip1:port1", "ss://RC4-MD5:pass2@ip2:port2"],
   "maxfail": 3,
   "recovertime": 600,
-  "starttimeout": 5,
-  "remotetimeout": 60,
-  "insidetimeout": 60,
+  "starttimeout": 3,
+  "remotetimeout": 120,
+  "insidetimeout": 120,
   "whitelistenable": false,
-  "whitelistdomains": [],
-  "whitelistips": ["::/0", "0.0.0.0/0"]
+  "whitelistdomains": [".telegram.org"],
+  "whitelistips": ["::/0", "0.0.0.0/0", "91.108.4.0/22", "91.108.8.0/22", "91.108.56.0/22", "109.239.140.0/24", "149.154.160.0/20", "149.154.164.0/22", "2001:67c:4e8::/48"]
 }
