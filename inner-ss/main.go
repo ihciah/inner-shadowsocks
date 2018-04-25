@@ -342,7 +342,7 @@ func makeServer(s string) (Server, error) {
 func main() {
 	var config_file string
 	var verbose bool
-	flag.BoolVar(&verbose, "v", true, "verbose mode")
+	flag.BoolVar(&verbose, "v", false, "verbose mode")
 	flag.StringVar(&config_file, "c", "config.json", "config file path")
 	flag.Parse()
 
